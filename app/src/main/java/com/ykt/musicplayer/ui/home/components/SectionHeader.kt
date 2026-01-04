@@ -10,10 +10,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun SectionHeader(
-    text: String
+    text: String,
+    onShowAllClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -23,10 +25,11 @@ fun SectionHeader(
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.displaySmall
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
         )
         TextButton(
-            onClick = { Log.d("Section Header", "Tapped show all for section $text") }
+            onClick = onShowAllClick
         ) {
             Text("Show all")
         }

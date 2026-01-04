@@ -12,7 +12,6 @@ import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
-import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.ykt.musicplayer.data.playback.MediaSessionManager
 import com.ykt.musicplayer.data.playback.NotificationManagerProvider
@@ -22,6 +21,8 @@ import com.ykt.musicplayer.data.repository.RecentlyPlayedRepositoryImpl
 import com.ykt.musicplayer.data.repository.SectionRepositoryImpl
 import com.ykt.musicplayer.data.repository.SettingsRepository
 import com.ykt.musicplayer.data.repository.SongRepositoryImpl
+import com.ykt.musicplayer.data.repository.PlaylistRepositoryImpl
+import com.ykt.musicplayer.domain.repository.PlaylistRepository
 import com.ykt.musicplayer.domain.repository.SectionRepository
 import com.ykt.musicplayer.domain.repository.SongRepository
 import com.ykt.musicplayer.utils.APPWRITE_PROJECT_ID
@@ -58,7 +59,6 @@ object AppModule {
     @Singleton
     fun provideNetworkMonitor(app: Application): NetworkMonitor = NetworkMonitor(app)
 
-    // Song repository
     @Provides
     @Singleton
     fun provideSongRepository(
@@ -66,21 +66,18 @@ object AppModule {
         storage: Storage
     ): SongRepositoryImpl = SongRepositoryImpl(firestore, storage)
 
-    // Recently played repository
     @Provides
     @Singleton
     fun provideRecentlyPlayedRepository(
         firestore: FirebaseFirestore
     ): RecentlyPlayedRepositoryImpl = RecentlyPlayedRepositoryImpl(firestore)
 
-    // Genre repository
     @Provides
     @Singleton
     fun provideGenreRepository(
         firestore: FirebaseFirestore
     ): GenreRepositoryImpl = GenreRepositoryImpl(firestore)
 
-    // Language repository
     @Provides
     @Singleton
     fun provideLanguageRepository(
@@ -90,6 +87,12 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSectionRepository(): SectionRepository = SectionRepositoryImpl()
+
+    @Provides
+    @Singleton
+    fun providePlaylistRepository(
+        firestore: FirebaseFirestore
+    ): PlaylistRepository = PlaylistRepositoryImpl(firestore)
 
     @Provides
     @Singleton

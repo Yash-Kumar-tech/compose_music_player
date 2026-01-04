@@ -16,10 +16,11 @@ import com.ykt.musicplayer.ui.home.components.SectionHeader
 fun LanguageSection(
     title: String,
     languages: List<Language>,
-    onLanguageClick: (Language) -> Unit
+    onLanguageClick: (Language) -> Unit,
+    onShowAllClick: () -> Unit
 ) {
     Column {
-        SectionHeader(title)
+        SectionHeader(title, onShowAllClick = onShowAllClick)
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(horizontal = 16.dp)

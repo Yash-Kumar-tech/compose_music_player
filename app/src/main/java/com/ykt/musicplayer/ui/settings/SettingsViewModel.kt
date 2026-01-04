@@ -34,4 +34,7 @@ class SettingsViewModel @Inject constructor(
         repo.updateTheme(theme)
     }
 
+    fun updateScreenTimeout(timeoutMs: Long) = viewModelScope.launch {
+        repo.updateScreenTimeoutMs(timeoutMs)
+    }
 }

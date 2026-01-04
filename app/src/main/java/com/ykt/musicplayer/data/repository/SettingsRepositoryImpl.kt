@@ -13,7 +13,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         AppSettings(
             looping = prefs[SettingsKeys.LOOPING] ?: false,
             autoplay = prefs[SettingsKeys.AUTOPLAY] ?: false,
-            theme = prefs[SettingsKeys.THEME] ?: "system"
+            theme = prefs[SettingsKeys.THEME] ?: "system",
+            screenTimeoutMs = prefs[SettingsKeys.SCREEN_TIMEOUT] ?: 5000L
         )
     }
 
@@ -32,6 +33,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun updateTheme(theme: String) {
         dataStore.edit {
             it[SettingsKeys.THEME] = theme
+        }
+    }
+
+    suspend fun updateScreenTimeoutMs(timeoutMs: Long) {
+        dataStore.edit {
+            it[SettingsKeys.SCREEN_TIMEOUT] = timeoutMs
         }
     }
 }

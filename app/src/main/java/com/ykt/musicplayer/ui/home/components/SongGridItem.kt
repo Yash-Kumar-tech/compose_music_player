@@ -1,6 +1,9 @@
 package com.ykt.musicplayer.ui.home.components
 
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,61 +35,74 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.ykt.musicplayer.domain.model.Song
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun SongGridItem(
     song: Song,
+    elementKey: String,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    Surface(
-        modifier = Modifier
-            .width(160.dp)
-            .aspectRatio(1.0f)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() },
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 2.dp
-    ) {
-        Box {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(song.thumbnailUrl)
-                    .size(128, 128)
-                    .listener(
-                        onSuccess = { request, metadata ->
-                            Log.d("Coil", "Loaded thumbnail for ${song.title}")
-                        },
-                        onError = { request, throwable ->
-                            Log.e("Coil", "Failed to load thumbnail for ${song.title} ${throwable.throwable.message}")
-                        }
-                    )
-                    .build(),
-                contentDescription = "${song.title} thumbnail",
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.6f)
+    with(sharedTransitionScope) {
+        Surface(
+            modifier = Modifier
+                .width(160.dp)
+                .aspectRatio(1.0f)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { onClick() },
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(12.dp),
+            tonalElevation = 2.dp
+        ) {
+            Box {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(song.thumbnailUrl)
+                        .size(128, 128)
+                        .listener(
+                            onSuccess = { request, metadata ->
+                                Log.d("Coil", "Loaded thumbnail for ${song.title}")
+                            },
+                            onError = { request, throwable ->
+                                Log.e(
+                                    "Coil",
+                                    "Failed to load thumbnail for ${song.title} ${throwable.throwable.message}"
+                                )
+                            }
+                        )
+                        .build(),
+                    contentDescription = "${song.title} thumbnail",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .sharedElement(
+                            rememberSharedContentState(key = elementKey),
+                            animatedVisibilityScope = animatedVisibilityScope
+                        ),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.6f)
+                                )
                             )
                         )
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        text = song.title,
+                        style = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    .padding(8.dp)
-            ) {
-                Text(
-                    text = song.title,
-                    style = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                }
             }
         }
     }

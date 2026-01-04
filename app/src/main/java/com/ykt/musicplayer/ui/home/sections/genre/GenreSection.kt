@@ -16,10 +16,11 @@ import com.ykt.musicplayer.ui.home.components.SectionHeader
 fun GenreSection(
     title: String,
     genres: List<Genre>,
-    onGenreClick: (Genre) -> Unit
+    onGenreClick: (Genre) -> Unit,
+    onShowAllClick: () -> Unit
 ) {
     Column {
-        SectionHeader(title)
+        SectionHeader(title, onShowAllClick = onShowAllClick)
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(horizontal = 16.dp)

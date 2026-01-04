@@ -5,10 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,6 +17,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -29,13 +30,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
+import com.ykt.musicplayer.ui.player.PlayerViewModel
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
+    playerViewModel: PlayerViewModel,
     navController: NavController
 ) {
     val settings by viewModel.settings.collectAsState()
@@ -69,7 +73,8 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -88,8 +93,7 @@ fun SettingsScreen(
                 )
             }
 
-            Text("Theme")
-
+            Text("Theme", style = MaterialTheme.typography.titleMedium)
 
             Box {
                 OutlinedButton(onClick = { expanded = true }) {
@@ -109,6 +113,19 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+
+            Text("Screen", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
+            
+            Column {
+                Text("Idle Screen Timeout: ${(settings.screenTimeoutMs / 1000)}s")
+                Slider(
+                    value = settings.screenTimeoutMs.toFloat(),
+                    onValueChange = { viewModel.updateScreenTimeout(it.toLong()) },
+                    valueRange = 2000f..10000f,
+                    steps = 7, // 2, 3, 4, 5, 6, 7, 8, 9, 10
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

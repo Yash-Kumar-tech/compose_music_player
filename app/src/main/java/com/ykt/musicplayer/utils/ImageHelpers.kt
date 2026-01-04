@@ -42,8 +42,8 @@ fun rememberDominantColor(imageUrl: String?): Color {
     return dominantColor
 }
 
-fun grayscaleFilter(): ColorFilter {
-    val matrix = ColorMatrix().apply { setToSaturation(0f) }
+fun grayscaleFilter(saturation: Float = 0f): ColorFilter {
+    val matrix = ColorMatrix().apply { setToSaturation(saturation) }
     return ColorFilter.colorMatrix(matrix)
 }
 

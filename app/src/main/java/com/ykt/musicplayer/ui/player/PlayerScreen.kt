@@ -4,6 +4,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -41,7 +44,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PlaylistPlay
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -71,21 +86,26 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.ykt.musicplayer.ui.player.components.AlbumArt
 import com.ykt.musicplayer.ui.player.components.FrostedPanel
 import com.ykt.musicplayer.ui.player.components.MusicBar
+import com.ykt.musicplayer.ui.player.components.MusicVisualizer
+import com.ykt.musicplayer.ui.player.components.PlaybackControls
+import com.ykt.musicplayer.ui.player.components.PlaybackSlider
+import com.ykt.musicplayer.ui.player.components.SecondaryControls
+import com.ykt.musicplayer.ui.player.components.SongDetails
 import com.ykt.musicplayer.utils.PlayerConstants
 import com.ykt.musicplayer.utils.PlayerState
 import com.ykt.musicplayer.utils.darkenColorFilter
-import com.ykt.musicplayer.utils.grayscaleFilter
+import com.ykt.musicplayer.ui.player.components.PlaylistSheet
+import com.ykt.musicplayer.ui.player.components.CreatePlaylistDialog
+import com.ykt.musicplayer.ui.player.components.TopPanel
+import com.ykt.musicplayer.ui.player.components.BottomPanel
 import com.ykt.musicplayer.utils.rememberDominantColor
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.max
-import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
 @UnstableApi
@@ -93,12 +113,29 @@ import kotlin.math.min
 fun PlayerScreen(
     viewModel: PlayerViewModel,
     songId: String,
+    elementKey: String = "",
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
     val song by viewModel.currentSong.collectAsStateWithLifecycle()
     val playerState by viewModel.playerState.collectAsStateWithLifecycle()
     val position by viewModel.positionMs.collectAsStateWithLifecycle()
     val duration by viewModel.durationMs.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val dominantColor = rememberDominantColor(song?.thumbnailUrl)
+
+    var showPlaylistSheet by remember { mutableStateOf(false) }
+    var showNewPlaylistDialog by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf("") }
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+
+    val grayscaleDominantColor = remember(dominantColor) {
+        val luminance =
+            0.299f * dominantColor.red + 0.587f * dominantColor.green + 0.114f * dominantColor.blue
+        Color(luminance, luminance, luminance, dominantColor.alpha)
+    }
 
     val hazeState = rememberHazeState()
 
@@ -116,10 +153,22 @@ fun PlayerScreen(
         animationSpec = tween(durationMillis = 500)
     )
 
-    LaunchedEffect(songId, position, playerState) {
-        showOverlay = false
-        delay(PlayerConstants.SCREEN_TIMEOUT)
-        showOverlay = true
+    val animatedDominantColor by animateColorAsState(
+        targetValue = if (showOverlay) grayscaleDominantColor else dominantColor,
+        animationSpec = tween(durationMillis = 600),
+        label = "DominantColorAnimation"
+    )
+
+    // Overlay timer: only reset when song changes, user interacts, or playback starts
+    var interactionSource by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(songId, interactionSource, playerState) {
+        if (playerState == PlayerState.Playing) {
+            showOverlay = false
+            delay(settings.screenTimeoutMs)
+            showOverlay = true
+        } else {
+            showOverlay = false
+        }
     }
 
     LaunchedEffect(songId) {
@@ -128,12 +177,16 @@ fun PlayerScreen(
         }
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(
+        containerColor = Color.Transparent
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(dominantColor) // Stable background color
                 .pointerInput(Unit) {
                     detectTapGestures {
+                        interactionSource = System.currentTimeMillis()
                         showOverlay = false
                     }
                 }
@@ -148,164 +201,103 @@ fun PlayerScreen(
                 colorFilter = darkenColorFilter(darkness)
             )
 
-            FrostedPanel(
-                hazeState = hazeState,
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(8.dp),
-                radius = 32.dp,
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
+                TopPanel(
+                    song = song,
+                    playerState = playerState,
+                    dominantColor = dominantColor,
+                    animatedDominantColor = animatedDominantColor,
+                    position = position,
+                    duration = duration,
+                    displayedProgress = displayed,
+                    showOverlay = showOverlay,
+                    thumbnailScale = thumbnailScale,
+                    hazeState = hazeState,
+                    sharedTransitionScope = sharedTransitionScope,
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    elementKey = elementKey,
+                    onAddClick = { showPlaylistSheet = true },
+                    onValueChange = { fraction ->
+                        isSeeking = true
+                        sliderValue = fraction
+                    },
+                    onValueChangeFinished = {
+                        val newPos = (sliderValue * duration).toLong()
+                        viewModel.seekTo(newPos)
+                        isSeeking = false
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+
+                BottomPanel(
+                    playerState = playerState,
+                    dominantColor = animatedDominantColor,
+                    onReplay10s = {
+                        val newPos = (position - 10_000).coerceAtLeast(0)
+                        viewModel.seekTo(newPos)
+                    },
+                    onForward10s = {
+                        val newPos = (position + 10_000).coerceAtMost(duration)
+                        viewModel.seekTo(newPos)
+                    },
+                    onTogglePlayPause = { viewModel.togglePlayPause() },
+                    hazeState = hazeState,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
+
+            if (darkness > 0f) {
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    AnimatedContent(
-                        targetState = showOverlay,
-                        transitionSpec = {
-                            fadeIn(tween(500)) togetherWith fadeOut(tween(500))
-                        }
-                    ) { overlayActive ->
-                        AsyncImage(
-                            model = song?.thumbnailUrl,
-                            contentDescription = song?.title ?: "Artwork",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1.0f)
-                                .clip(RoundedCornerShape(24.dp))
-                                .graphicsLayer {
-                                    scaleX = thumbnailScale
-                                    scaleY = thumbnailScale
-                                },
-                            contentScale = ContentScale.Crop,
-                            colorFilter = if(overlayActive) grayscaleFilter() else null
-                        )
-                    }
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            song?.title.orEmpty(), 
-                            style = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onBackground)
-                        )
-                        Text(
-                            song?.artist.orEmpty(), 
-                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
-                        )
-                    }
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Slider(
-                            value = displayed.coerceIn(0f, 1f),
-                            onValueChange = { fraction ->
-                                isSeeking = true
-                                sliderValue = fraction
-                            },
-                            onValueChangeFinished = {
-                                val newPos = (sliderValue * duration).toLong()
-                                viewModel.seekTo(newPos)
-                                isSeeking = false
-                            },
-                            track = { state ->
-                                Canvas(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(4.dp)
-                                ) {
-                                    val fraction = state.value
-                                    val trackHeight = size.height
-                                    val trackWidth = size.width
-
-                                    // Inactive track
-                                    drawLine(
-                                        color = dominantColor.copy(alpha = 0.3f),
-                                        start = Offset(0f, trackHeight / 2),
-                                        end = Offset(trackWidth, trackHeight / 2),
-                                        strokeWidth = trackHeight,
-                                        cap = StrokeCap.Round
-                                    )
-
-                                    // Active track
-                                    drawLine(
-                                        color = dominantColor,
-                                        start = Offset(0f, trackHeight / 2),
-                                        end = Offset(trackWidth * fraction, trackHeight / 2),
-                                        strokeWidth = trackHeight,
-                                        cap = StrokeCap.Round
-                                    )
-                                }
-                            },
-                            colors = SliderDefaults.colors(
-                                thumbColor = dominantColor,
-                                activeTrackColor = dominantColor,
-                                inactiveTrackColor = dominantColor.copy(alpha = 0.3f)
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            // Thin track
-                            // Circular thumb
-//                            thumb = {
-//                                Box(
-//                                    Modifier
-//                                        .size(12.dp)
-//                                        .background(dominantColor, CircleShape)
-//                                )
-//                            }
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(formatTime(position), color = MaterialTheme.colorScheme.onBackground)
-                            Text(formatTime(duration), color = MaterialTheme.colorScheme.onBackground)
-                        }
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(24.dp), 
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = {
-                            val newPos = (position - 10_000).coerceAtLeast(0)
-                            viewModel.seekTo(newPos)
-                        }) {
-                            Icon(
-                                Icons.Rounded.Replay10, 
-                                contentDescription = "Back 10s", 
-                                tint = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-
-                        IconButton(onClick = { viewModel.togglePlayPause() }) {
-                            val icon = when (playerState) {
-                                PlayerState.Playing -> {
-                                    Icons.Rounded.Pause
-                                }
-                                PlayerState.Paused, PlayerState.Ended, PlayerState.Idle -> {
-                                    Icons.Rounded.PlayArrow
-                                }
-                                PlayerState.Buffering -> {
-                                    Icons.Rounded.HourglassEmpty
-                                }
-                                PlayerState.Error -> {
-                                    Icons.Rounded.Error
-                                }
+                        .background(Color.Black.copy(alpha = 0.45f * darkness))
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                interactionSource = System.currentTimeMillis()
+                                showOverlay = false
                             }
-                            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(48.dp))
                         }
-
-                        IconButton(onClick = {
-                            val newPos = (position + 10_000).coerceAtMost(duration)
-                            viewModel.seekTo(newPos)
-                        }) {
-                            Icon(Icons.Rounded.Forward10, contentDescription = "Forward 10s", tint = MaterialTheme.colorScheme.onBackground)
-                        }
-                    }
-                }
+                )
             }
         }
+    }
+
+    if (showPlaylistSheet) {
+        PlaylistSheet(
+            playlists = playlists,
+            hazeState = hazeState,
+            dominantColor = dominantColor,
+            sheetState = sheetState,
+            onDismissRequest = { showPlaylistSheet = false },
+            onPlaylistSelect = { playlist ->
+                song?.id?.let { songId ->
+                    viewModel.addSongToPlaylist(playlist.id, songId)
+                }
+                showPlaylistSheet = false
+            },
+            onCreateNewClick = {
+                showPlaylistSheet = false
+                showNewPlaylistDialog = true
+            }
+        )
+    }
+
+    if (showNewPlaylistDialog) {
+        CreatePlaylistDialog(
+            hazeState = hazeState,
+            dominantColor = dominantColor,
+            onDismissRequest = { showNewPlaylistDialog = false },
+            onCreateClick = { name ->
+                viewModel.createPlaylist(name)
+                showNewPlaylistDialog = false
+            }
+        )
     }
 }
 

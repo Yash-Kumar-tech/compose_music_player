@@ -28,6 +28,8 @@ import com.ykt.musicplayer.data.repository.RecentlyPlayedRepositoryImpl
 import com.ykt.musicplayer.data.repository.SettingsRepository
 import com.ykt.musicplayer.domain.model.AppSettings
 import com.ykt.musicplayer.domain.model.Song
+import com.ykt.musicplayer.domain.model.Playlist
+import com.ykt.musicplayer.domain.repository.PlaylistRepository
 import com.ykt.musicplayer.utils.NetworkMonitor
 import com.ykt.musicplayer.utils.PlayerState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,6 +55,7 @@ class PlayerViewModel @Inject constructor(
     networkMonitor: NetworkMonitor,
     private val recentlyPlayedRepository: RecentlyPlayedRepositoryImpl,
     private val settingsRepository: SettingsRepository,
+    private val playlistRepository: PlaylistRepository,
     val audioPlayer: ExoPlayer,
 ) : AndroidViewModel(app) {
 
@@ -79,6 +82,13 @@ class PlayerViewModel @Inject constructor(
             viewModelScope,
             SharingStarted.Eagerly,
             AppSettings()
+        )
+
+    val playlists: StateFlow<List<Playlist>> =
+        playlistRepository.getPlaylists().stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList()
         )
 
     init {
@@ -190,14 +200,16 @@ class PlayerViewModel @Inject constructor(
             this.action = action
             extras?.let { putExtras(it) }
         }
-        ContextCompat.startForegroundService(ctx, intent)
+        
+        // Only use startForegroundService for the action that actually starts playback/notification
+        if (action == Actions.PLAY || action == Actions.RESUME) {
+            ContextCompat.startForegroundService(ctx, intent)
+        } else {
+            ctx.startService(intent)
+        }
     }
 
     fun loadSongById(songId: String) {
-//        val item = audioPlayer.currentMediaItem
-//        if (item != null && item.mediaId == songId) {
-//            _currentSong.value = item.toSong()
-//        }
         // If already playing, just sync
         val current = _currentSong.value
         if (current?.id == songId) return
@@ -208,12 +220,17 @@ class PlayerViewModel @Inject constructor(
                 return
             }
         }
+    }
 
-        // fallback: fetch from repository
+    fun createPlaylist(name: String) {
         viewModelScope.launch {
-//            val song = recentlyPlayedRepository.getSongById(songId)
-//            _currentSong.value = song
+            playlistRepository.createPlaylist(name)
         }
+    }
 
+    fun addSongToPlaylist(playlistId: String, songId: String) {
+        viewModelScope.launch {
+            playlistRepository.addSongToPlaylist(playlistId, songId)
+        }
     }
 }

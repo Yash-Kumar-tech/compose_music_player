@@ -1,6 +1,9 @@
 package com.ykt.musicplayer.ui.player.components
 
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,10 +59,12 @@ import com.ykt.musicplayer.utils.PlayerState
 import kotlinx.coroutines.delay
 
 
-@OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MusicBar(
     viewModel: PlayerViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -113,14 +118,20 @@ fun MusicBar(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Thumbnail (sharp)
-                        AsyncImage(
-                            model = song?.thumbnailUrl,
-                            contentDescription = song?.title,
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
+                        with(sharedTransitionScope) {
+                            AsyncImage(
+                                model = song?.thumbnailUrl,
+                                contentDescription = song?.title,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .sharedElement(
+                                        rememberSharedContentState(key = "thumbnail_${song?.id}_bar"),
+                                        animatedVisibilityScope = animatedVisibilityScope
+                                    )
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
 
                         Spacer(Modifier.width(12.dp))
 
