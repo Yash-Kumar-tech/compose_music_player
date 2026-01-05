@@ -53,6 +53,9 @@ import com.ykt.musicplayer.ui.home.sections.songs.SongsSection
 import com.ykt.musicplayer.ui.home.sections.songs.SongsSectionViewModel
 import com.ykt.musicplayer.ui.player.PlayerViewModel
 import com.ykt.musicplayer.ui.player.components.MusicBar
+import com.ykt.musicplayer.ui.player.components.CreatePlaylistDialog
+import com.ykt.musicplayer.utils.rememberDominantColor
+import androidx.compose.runtime.setValue
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
@@ -80,11 +83,38 @@ fun HomeScreen(
     val recentsExpanded by recentlyPlayedViewModel.isExpanded.collectAsState()
     val playlistsExpanded by playlistsViewModel.isExpanded.collectAsState()
 
+    var showNewPlaylistDialog by remember { mutableStateOf(false) }
+    val currentSong by playerViewModel.currentSong.collectAsState()
+    val dominantColor = rememberDominantColor(currentSong?.thumbnailUrl)
+
 
     val loading by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Music Player",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                },
+                actions = {
+                    IconButton(onClick = { navController.navigate("settings") }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
             if (loading) {
@@ -97,121 +127,100 @@ fun HomeScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        top = innerPadding.calculateTopPadding() + 80.dp,
-                        bottom = 120.dp,
-                        start = 8.dp,
-                        end = 8.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    items(sections) { section ->
-                        when (section.id) {
-                            "all_songs" -> SongsSection(
-                                section.title,
-                                sectionId = section.id,
-                                songs,
-                                isExpanded = songsExpanded,
-                                sharedTransitionScope = sharedTransitionScope,
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                onSongClick = { song ->
-                                    val elementKey = "thumbnail_${song.id}_${section.id}"
-                                    playerViewModel.playSong(song)
-                                    navController.navigate("player/${song.id}?elementKey=$elementKey")
-                                },
-                                onShowAllClick = { songsViewModel.toggleExpanded() }
-                            )
-
-                            "recently_played" -> RecentlyPlayedSection(
-                                section.title,
-                                sectionId = section.id,
-                                recents,
-                                isExpanded = recentsExpanded,
-                                sharedTransitionScope = sharedTransitionScope,
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                onSongClick = { song ->
-                                    val elementKey = "thumbnail_${song.id}_${section.id}"
-                                    playerViewModel.playSong(song)
-                                    navController.navigate("player/${song.id}?elementKey=$elementKey")
-                                },
-                                onShowAllClick = { recentlyPlayedViewModel.toggleExpanded() }
-                            )
-
-                            "genres" -> GenreSection(
-                                section.title,
-                                loadedGenres,
-                                onGenreClick = { genre ->
-                                    Log.d("HomeScreen", "Tapped genre ${genre.name}")
-                                },
-                                onShowAllClick = { Log.d("HomeScreen", "Show all genres tapped") }
-                            )
-
-                            "languages" -> LanguageSection(
-                                section.title,
-                                loadedLanguages,
-                                onLanguageClick = { language ->
-                                    Log.d("HomeScreen", "Tapped language ${language.name}")
-                                },
-                                onShowAllClick = { Log.d("HomeScreen", "Show all languages tapped") }
-                            )
-
-                            "playlists" -> PlaylistsSection(
-                                section.title,
-                                playlists,
-                                isExpanded = playlistsExpanded,
-                                onPlaylistClick = { playlist ->
-                                    Log.d("HomeScreen", "Tapped playlist ${playlist.name}")
-                                },
-                                onCreateClick = {
-                                    Log.d("HomeScreen", "Create Playlist tapped")
-                                    // TODO: Implement creation dialog or navigate
-                                },
-                                onShowAllClick = { playlistsViewModel.toggleExpanded() }
-                            )
-
-                            else -> Text(section.title, modifier = Modifier.padding(16.dp))
-                        }
-                    }
-                }
-
-                // Floating TopBar - Placed after content to be on top of Z-order
                 Surface(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = innerPadding.calculateTopPadding() + 8.dp)
-                        .align(Alignment.TopCenter),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    tonalElevation = 8.dp,
-                    shadowElevation = 8.dp
+                        .fillMaxSize()
+                        .padding(top = innerPadding.calculateTopPadding()),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 1.dp
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            top = 24.dp,
+                            bottom = 120.dp,
+                            start = 8.dp,
+                            end = 8.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        Text(
-                            text = "Music Player",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        IconButton(
-                            onClick = { navController.navigate("settings") },
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Settings,
-                                contentDescription = "Settings",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                        items(sections) { section ->
+                            when (section.id) {
+                                "all_songs" -> SongsSection(
+                                    section.title,
+                                    sectionId = section.id,
+                                    songs,
+                                    isExpanded = songsExpanded,
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    onSongClick = { song ->
+                                        val elementKey = "thumbnail_${song.id}_${section.id}"
+                                        playerViewModel.playSong(song)
+                                        navController.navigate("player/${song.id}?elementKey=$elementKey")
+                                    },
+                                    onShowAllClick = {
+                                        navController.navigate("category/${section.id}")
+                                    }
+                                )
+
+                                "recently_played" -> RecentlyPlayedSection(
+                                    section.title,
+                                    sectionId = section.id,
+                                    recents,
+                                    isExpanded = recentsExpanded,
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    onSongClick = { song ->
+                                        val elementKey = "thumbnail_${song.id}_${section.id}"
+                                        playerViewModel.playSong(song)
+                                        navController.navigate("player/${song.id}?elementKey=$elementKey")
+                                    },
+                                    onShowAllClick = {
+                                        navController.navigate("category/${section.id}")
+                                    }
+                                )
+
+                                "genres" -> GenreSection(
+                                    section.title,
+                                    loadedGenres,
+                                    onGenreClick = { genre ->
+                                        Log.d("HomeScreen", "Tapped genre ${genre.name}")
+                                    },
+                                    onShowAllClick = {
+                                        navController.navigate("category/${section.id}")
+                                    }
+                                )
+
+                                "languages" -> LanguageSection(
+                                    section.title,
+                                    loadedLanguages,
+                                    onLanguageClick = { language ->
+                                        Log.d("HomeScreen", "Tapped language ${language.name}")
+                                    },
+                                    onShowAllClick = {
+                                        navController.navigate("category/${section.id}")
+                                    }
+                                )
+
+                                "playlists" -> PlaylistsSection(
+                                    section.title,
+                                    playlists,
+                                    isExpanded = playlistsExpanded,
+                                    onPlaylistClick = { playlist ->
+                                        Log.d("HomeScreen", "Tapped playlist ${playlist.name}")
+                                    },
+                                    onCreateClick = {
+                                        showNewPlaylistDialog = true
+                                    },
+                                    onShowAllClick = {
+                                        navController.navigate("category/${section.id}")
+                                    }
+                                )
+
+                                else -> Text(section.title, modifier = Modifier.padding(16.dp))
+                            }
                         }
                     }
                 }
@@ -231,6 +240,18 @@ fun HomeScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+                )
+            }
+
+            if (showNewPlaylistDialog) {
+                CreatePlaylistDialog(
+                    hazeState = null, // No haze needed on home screen for now
+                    dominantColor = dominantColor,
+                    onDismissRequest = { showNewPlaylistDialog = false },
+                    onCreateClick = { name ->
+                        playerViewModel.createPlaylist(name)
+                        showNewPlaylistDialog = false
+                    }
                 )
             }
         }

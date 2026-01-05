@@ -114,6 +114,10 @@ class PlaybackService: Service() {
                 val autoplay = intent.getBooleanExtra(Extras.AUTOPLAY, false)
                 audioPlayer.playWhenReady = autoplay
             }
+            Actions.SET_SHUFFLE -> {
+                val shuffle = intent.getBooleanExtra(Extras.SHUFFLE, false)
+                audioPlayer.shuffleModeEnabled = shuffle
+            }
         }
     }
 
@@ -155,6 +159,7 @@ object Actions {
     const val SEEK_TO = "com.ykt.musicplayer.action.SEEK_TO"
     const val SET_LOOPING = "com.ykt.musicplayer.action.SET_LOOPING"
     const val SET_AUTOPLAY = "com.ykt.musicplayer.action.SET_AUTOPLAY"
+    const val SET_SHUFFLE = "com.ykt.musicplayer.action.SET_SHUFFLE"
 }
 object Extras {
     const val AUDIO_URL = "audio_url"
@@ -165,4 +170,5 @@ object Extras {
     const val POSITION_MS = "position_ms"
     const val LOOPING = "looping"
     const val AUTOPLAY = "autoplay"
+    const val SHUFFLE = "shuffle"
 }

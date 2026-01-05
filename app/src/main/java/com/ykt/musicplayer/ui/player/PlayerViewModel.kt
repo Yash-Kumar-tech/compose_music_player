@@ -65,12 +65,6 @@ class PlayerViewModel @Inject constructor(
     private val _playerState = MutableStateFlow(PlayerState.Idle)
     val playerState: StateFlow<PlayerState> = _playerState
 
-    private val _isLooping = MutableStateFlow(false)
-    val isLooping: StateFlow<Boolean> = _isLooping
-
-    private val _autoplay = MutableStateFlow(false)
-    val autoplay: StateFlow<Boolean> = _autoplay
-
     private val _positionMs = MutableStateFlow(0L)
     val positionMs: StateFlow<Long> = _positionMs
 
@@ -94,17 +88,34 @@ class PlayerViewModel @Inject constructor(
     init {
         // Forward settings changes to service
         viewModelScope.launch {
+            var lastPrefs: AppSettings? = null
             settings.collect { prefs ->
-                sendServiceCommand(
-                    action = Actions.SET_LOOPING,
-                    extras = bundleOf(Extras.LOOPING to prefs.looping)
-                )
-                sendServiceCommand(
-                    action = Actions.SET_AUTOPLAY,
-                    extras = bundleOf(Extras.AUTOPLAY to prefs.autoplay)
-                )
+                if (lastPrefs?.looping != prefs.looping) {
+                    sendServiceCommand(
+                        action = Actions.SET_LOOPING,
+                        extras = bundleOf(Extras.LOOPING to prefs.looping)
+                    )
+                }
+                if (lastPrefs?.shuffle != prefs.shuffle) {
+                    sendServiceCommand(
+                        action = Actions.SET_SHUFFLE,
+                        extras = bundleOf(Extras.SHUFFLE to prefs.shuffle)
+                    )
+                }
+                // Avoid pausing an active player during app resume/init by skipping initial SET_AUTOPLAY
+                // Only send if it actually changed and it's NOT the first load
+                if (lastPrefs != null && lastPrefs?.autoplay != prefs.autoplay) {
+                    sendServiceCommand(
+                        action = Actions.SET_AUTOPLAY,
+                        extras = bundleOf(Extras.AUTOPLAY to prefs.autoplay)
+                    )
+                }
+                lastPrefs = prefs
             }
         }
+
+        // Sync initial state
+        syncStateWithPlayer()
 
         // Listen to player state changes
         audioPlayer.addListener(object : Player.Listener {
@@ -113,15 +124,11 @@ class PlayerViewModel @Inject constructor(
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
-                _playerState.value = when (playbackState) {
-                    Player.STATE_IDLE -> PlayerState.Idle
-                    Player.STATE_BUFFERING -> PlayerState.Buffering
-                    Player.STATE_READY ->
-                        if (audioPlayer.playWhenReady) PlayerState.Playing
-                        else PlayerState.Paused
-                    Player.STATE_ENDED -> PlayerState.Ended
-                    else -> PlayerState.Error
-                }
+                updatePlayerState()
+            }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                updatePlayerState()
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -143,6 +150,29 @@ class PlayerViewModel @Inject constructor(
                 delay(500)
             }
         }
+    }
+
+    private fun updatePlayerState() {
+        _playerState.value = when (audioPlayer.playbackState) {
+            Player.STATE_IDLE -> PlayerState.Idle
+            Player.STATE_BUFFERING -> PlayerState.Buffering
+            Player.STATE_READY ->
+                if (audioPlayer.playWhenReady) PlayerState.Playing
+                else PlayerState.Paused
+            Player.STATE_ENDED -> PlayerState.Ended
+            else -> PlayerState.Error
+        }
+    }
+
+    private fun syncStateWithPlayer() {
+        val item = audioPlayer.currentMediaItem
+        _currentSong.value = item?.toSong()
+        updatePlayerState()
+        
+        val pos = audioPlayer.currentPosition
+        val dur = audioPlayer.duration
+        _positionMs.value = pos
+        _durationMs.value = if (dur > 0) dur else 0L
     }
 
     @OptIn(UnstableApi::class)
@@ -190,8 +220,21 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun toggleAutoPlay() {
-        val newAutoPlay = !settings.value.autoplay
-        viewModelScope.launch { settingsRepository.updateAutoPlay(newAutoPlay) }
+        viewModelScope.launch {
+            settingsRepository.updateAutoPlay(!settings.value.autoplay)
+        }
+    }
+
+    fun toggleShuffle() {
+        viewModelScope.launch {
+            settingsRepository.updateShuffle(!settings.value.shuffle)
+        }
+    }
+
+    fun toggleLooping() {
+        viewModelScope.launch {
+            settingsRepository.updateLooping(!settings.value.looping)
+        }
     }
 
     private fun sendServiceCommand(action: String, extras: Bundle? = null) {

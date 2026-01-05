@@ -1,99 +1,31 @@
 package com.ykt.musicplayer.ui.player
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.rounded.Error
-import androidx.compose.material.icons.rounded.Forward10
-import androidx.compose.material.icons.rounded.HourglassEmpty
-import androidx.compose.material.icons.rounded.Loop
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Replay10
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.AlertDialog
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.PlaylistPlay
-import androidx.compose.foundation.clickable
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.ykt.musicplayer.ui.player.components.AlbumArt
-import com.ykt.musicplayer.ui.player.components.FrostedPanel
-import com.ykt.musicplayer.ui.player.components.MusicBar
-import com.ykt.musicplayer.ui.player.components.MusicVisualizer
-import com.ykt.musicplayer.ui.player.components.PlaybackControls
-import com.ykt.musicplayer.ui.player.components.PlaybackSlider
-import com.ykt.musicplayer.ui.player.components.SecondaryControls
-import com.ykt.musicplayer.ui.player.components.SongDetails
+import com.ykt.musicplayer.domain.model.Song
 import com.ykt.musicplayer.utils.PlayerConstants
 import com.ykt.musicplayer.utils.PlayerState
 import com.ykt.musicplayer.utils.darkenColorFilter
@@ -162,7 +94,7 @@ fun PlayerScreen(
     // Overlay timer: only reset when song changes, user interacts, or playback starts
     var interactionSource by remember { mutableLongStateOf(0L) }
     LaunchedEffect(songId, interactionSource, playerState) {
-        if (playerState == PlayerState.Playing) {
+        if (playerState == PlayerState.Playing && settings.screenTimeoutMs > 0L) {
             showOverlay = false
             delay(settings.screenTimeoutMs)
             showOverlay = true
@@ -177,40 +109,60 @@ fun PlayerScreen(
         }
     }
 
-    Scaffold(
-        containerColor = Color.Transparent
-    ) { innerPadding ->
+    SharedTransitionLayout {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(dominantColor) // Stable background color
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        interactionSource = System.currentTimeMillis()
-                        showOverlay = false
-                    }
-                }
+                .background(Color.Black)
         ) {
-            AsyncImage(
-                model = song?.thumbnailUrl,
-                contentDescription = song?.title ?: "Artwork",
+            // Dedicated haze source container
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .hazeSource(hazeState),
-                contentScale = ContentScale.Crop,
-                colorFilter = darkenColorFilter(darkness)
-            )
+                    .background(dominantColor)
+                    .hazeSource(hazeState)
+            ) {
+                val infiniteTransition = rememberInfiniteTransition(label = "BackgroundAnimation")
+                val panOffset by infiniteTransition.animateFloat(
+                    initialValue = -15f,
+                    targetValue = 15f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 15000, easing = androidx.compose.animation.core.LinearEasing),
+                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                    ),
+                    label = "PanAnimation"
+                )
+
+                AsyncImage(
+                    model = song?.thumbnailUrl,
+                    contentDescription = song?.title ?: "Artwork",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = 1.15f,
+                            scaleY = 1.15f,
+                            translationX = panOffset,
+                            translationY = panOffset / 2
+                        ),
+                    contentScale = ContentScale.Crop,
+                    colorFilter = darkenColorFilter(darkness)
+                )
+            }
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(WindowInsets.systemBars.asPaddingValues())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 TopPanel(
                     song = song,
                     playerState = playerState,
+                    isShuffle = settings.shuffle,
+                    isRepeat = settings.looping,
+                    isAutoplay = settings.autoplay,
+                    isFromPlaylist = viewModel.audioPlayer.mediaItemCount > 1,
                     dominantColor = dominantColor,
                     animatedDominantColor = animatedDominantColor,
                     position = position,
@@ -223,6 +175,9 @@ fun PlayerScreen(
                     animatedVisibilityScope = animatedVisibilityScope,
                     elementKey = elementKey,
                     onAddClick = { showPlaylistSheet = true },
+                    onShuffleClick = { viewModel.toggleShuffle() },
+                    onRepeatClick = { viewModel.toggleLooping() },
+                    onAutoplayClick = { viewModel.toggleAutoPlay() },
                     onValueChange = { fraction ->
                         isSeeking = true
                         sliderValue = fraction

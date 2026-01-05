@@ -30,11 +30,27 @@ class SettingsViewModel @Inject constructor(
         repo.updateAutoPlay(!settings.value.autoplay)
     }
 
+    fun toggleShuffle() = viewModelScope.launch {
+        repo.updateShuffle(!settings.value.shuffle)
+    }
+
     fun setTheme(theme: String) = viewModelScope.launch {
         repo.updateTheme(theme)
     }
 
     fun updateScreenTimeout(timeoutMs: Long) = viewModelScope.launch {
         repo.updateScreenTimeoutMs(timeoutMs)
+    }
+
+    fun setAudioQuality(quality: String) = viewModelScope.launch {
+        repo.updateAudioQuality(quality)
+    }
+
+    fun toggleDynamicColors() = viewModelScope.launch {
+        repo.updateDynamicColors(!settings.value.dynamicColors)
+    }
+
+    fun toggleShowLyrics() = viewModelScope.launch {
+        repo.updateShowLyrics(!settings.value.showLyrics)
     }
 }

@@ -16,6 +16,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -53,7 +55,19 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            MusicPlayerTheme {
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settings by settingsViewModel.settings.collectAsState()
+
+            val isDarkTheme = when (settings.theme) {
+                "light" -> false
+                "dark" -> true
+                else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
+
+            MusicPlayerTheme(
+                darkTheme = isDarkTheme,
+                dynamicColor = settings.dynamicColors
+            ) {
                 val navController = rememberNavController()
 
                 val songId = intent?.getStringExtra("deeplink_song_id")

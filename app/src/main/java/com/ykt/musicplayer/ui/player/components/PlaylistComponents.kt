@@ -21,7 +21,7 @@ import dev.chrisbanes.haze.HazeState
 @Composable
 fun PlaylistSheet(
     playlists: List<Playlist>,
-    hazeState: HazeState,
+    hazeState: HazeState?,
     dominantColor: Color,
     sheetState: SheetState,
     onDismissRequest: () -> Unit,
@@ -85,7 +85,7 @@ fun PlaylistSheet(
 
 @Composable
 fun CreatePlaylistDialog(
-    hazeState: HazeState,
+    hazeState: HazeState?,
     dominantColor: Color,
     onDismissRequest: () -> Unit,
     onCreateClick: (String) -> Unit

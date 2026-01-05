@@ -32,7 +32,7 @@ import dev.chrisbanes.haze.rememberHazeState
 @RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun FrostedPanel(
-    hazeState: HazeState,
+    hazeState: HazeState?,
     modifier: Modifier = Modifier,
     tint: Color = Color.Black.copy(alpha = 0.35f),
     radius: Dp,
@@ -42,9 +42,13 @@ fun FrostedPanel(
         modifier = modifier
             .clip(RoundedCornerShape(radius))
             .background(tint)
-            .hazeEffect(
-                hazeState,
-                style = FluentMaterials.thinAcrylic()
+            .then(
+                if (hazeState != null) {
+                    Modifier.hazeEffect(
+                        hazeState,
+                        style = FluentMaterials.thinAcrylic()
+                    )
+                } else Modifier
             )
     ) {
         content()

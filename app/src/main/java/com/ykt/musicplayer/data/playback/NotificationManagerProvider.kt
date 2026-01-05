@@ -72,6 +72,7 @@ class NotificationManagerProvider @Inject constructor(
 
                     val request = ImageRequest.Builder(context)
                         .data(url)
+                        .size(512, 512)
                         .allowHardware(false)
                         .target { drawable ->
                             val bitmap = (drawable as? BitmapDrawable)?.bitmap

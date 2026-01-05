@@ -8,6 +8,9 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
@@ -21,16 +24,6 @@ private val LightColorScheme = lightColorScheme(
     primary = Purple40,
     secondary = PurpleGrey40,
     tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
 )
 
 @Composable
@@ -50,9 +43,59 @@ fun MusicPlayerTheme(
         else -> LightColorScheme
     }
 
+    val animatedColorScheme = animateColorScheme(colorScheme)
+
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = animatedColorScheme,
         typography = Typography,
         content = content
+    )
+}
+
+@Composable
+private fun animateColorScheme(targetColorScheme: ColorScheme): ColorScheme {
+    val animationSpec = tween<androidx.compose.ui.graphics.Color>(durationMillis = 500)
+    
+    @Composable
+    fun animateColor(color: androidx.compose.ui.graphics.Color) = 
+        animateColorAsState(color, animationSpec, label = "color").value
+
+    return targetColorScheme.copy(
+        primary = animateColor(targetColorScheme.primary),
+        onPrimary = animateColor(targetColorScheme.onPrimary),
+        primaryContainer = animateColor(targetColorScheme.primaryContainer),
+        onPrimaryContainer = animateColor(targetColorScheme.onPrimaryContainer),
+        inversePrimary = animateColor(targetColorScheme.inversePrimary),
+        secondary = animateColor(targetColorScheme.secondary),
+        onSecondary = animateColor(targetColorScheme.onSecondary),
+        secondaryContainer = animateColor(targetColorScheme.secondaryContainer),
+        onSecondaryContainer = animateColor(targetColorScheme.onSecondaryContainer),
+        tertiary = animateColor(targetColorScheme.tertiary),
+        onTertiary = animateColor(targetColorScheme.onTertiary),
+        tertiaryContainer = animateColor(targetColorScheme.tertiaryContainer),
+        onTertiaryContainer = animateColor(targetColorScheme.onTertiaryContainer),
+        background = animateColor(targetColorScheme.background),
+        onBackground = animateColor(targetColorScheme.onBackground),
+        surface = animateColor(targetColorScheme.surface),
+        onSurface = animateColor(targetColorScheme.onSurface),
+        surfaceVariant = animateColor(targetColorScheme.surfaceVariant),
+        onSurfaceVariant = animateColor(targetColorScheme.onSurfaceVariant),
+        surfaceTint = animateColor(targetColorScheme.surfaceTint),
+        inverseSurface = animateColor(targetColorScheme.inverseSurface),
+        inverseOnSurface = animateColor(targetColorScheme.inverseOnSurface),
+        error = animateColor(targetColorScheme.error),
+        onError = animateColor(targetColorScheme.onError),
+        errorContainer = animateColor(targetColorScheme.errorContainer),
+        onErrorContainer = animateColor(targetColorScheme.onErrorContainer),
+        outline = animateColor(targetColorScheme.outline),
+        outlineVariant = animateColor(targetColorScheme.outlineVariant),
+        scrim = animateColor(targetColorScheme.scrim),
+        surfaceBright = animateColor(targetColorScheme.surfaceBright),
+        surfaceDim = animateColor(targetColorScheme.surfaceDim),
+        surfaceContainer = animateColor(targetColorScheme.surfaceContainer),
+        surfaceContainerHigh = animateColor(targetColorScheme.surfaceContainerHigh),
+        surfaceContainerHighest = animateColor(targetColorScheme.surfaceContainerHighest),
+        surfaceContainerLow = animateColor(targetColorScheme.surfaceContainerLow),
+        surfaceContainerLowest = animateColor(targetColorScheme.surfaceContainerLowest),
     )
 }

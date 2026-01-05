@@ -18,6 +18,10 @@ import dev.chrisbanes.haze.HazeState
 fun TopPanel(
     song: Song?,
     playerState: PlayerState,
+    isShuffle: Boolean,
+    isRepeat: Boolean,
+    isAutoplay: Boolean,
+    isFromPlaylist: Boolean,
     dominantColor: Color,
     animatedDominantColor: Color,
     position: Long,
@@ -30,6 +34,9 @@ fun TopPanel(
     animatedVisibilityScope: AnimatedVisibilityScope,
     elementKey: String,
     onAddClick: () -> Unit,
+    onShuffleClick: () -> Unit,
+    onRepeatClick: () -> Unit,
+    onAutoplayClick: () -> Unit,
     onValueChange: (Float) -> Unit,
     onValueChangeFinished: () -> Unit,
     modifier: Modifier = Modifier
@@ -71,10 +78,15 @@ fun TopPanel(
             )
 
             SecondaryControls(
-                isLiked = false, // TODO: Link with VM
+                isLiked = false, // TODO: Link with VM if needed
+                isShuffle = isShuffle,
+                isRepeat = isRepeat,
+                isAutoplay = isAutoplay,
+                isFromPlaylist = isFromPlaylist,
                 onLikeClick = {},
-                onShuffleClick = {},
-                onRepeatClick = {},
+                onShuffleClick = onShuffleClick,
+                onRepeatClick = onRepeatClick,
+                onAutoplayClick = onAutoplayClick,
                 onAddClick = onAddClick,
                 dominantColor = animatedDominantColor,
                 modifier = Modifier.padding(top = 16.dp)

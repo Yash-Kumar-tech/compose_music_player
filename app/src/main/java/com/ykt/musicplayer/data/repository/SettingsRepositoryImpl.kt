@@ -13,8 +13,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         AppSettings(
             looping = prefs[SettingsKeys.LOOPING] ?: false,
             autoplay = prefs[SettingsKeys.AUTOPLAY] ?: false,
+            shuffle = prefs[SettingsKeys.SHUFFLE] ?: false,
             theme = prefs[SettingsKeys.THEME] ?: "system",
-            screenTimeoutMs = prefs[SettingsKeys.SCREEN_TIMEOUT] ?: 5000L
+            screenTimeoutMs = prefs[SettingsKeys.SCREEN_TIMEOUT] ?: 5000L,
+            audioQuality = prefs[SettingsKeys.AUDIO_QUALITY] ?: "normal",
+            dynamicColors = prefs[SettingsKeys.DYNAMIC_COLORS] ?: true,
+            showLyrics = prefs[SettingsKeys.SHOW_LYRICS] ?: true,
         )
     }
 
@@ -30,6 +34,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    suspend fun updateShuffle(shuffle: Boolean) {
+        dataStore.edit {
+            it[SettingsKeys.SHUFFLE] = shuffle
+        }
+    }
+
     suspend fun updateTheme(theme: String) {
         dataStore.edit {
             it[SettingsKeys.THEME] = theme
@@ -39,6 +49,24 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun updateScreenTimeoutMs(timeoutMs: Long) {
         dataStore.edit {
             it[SettingsKeys.SCREEN_TIMEOUT] = timeoutMs
+        }
+    }
+
+    suspend fun updateAudioQuality(quality: String) {
+        dataStore.edit {
+            it[SettingsKeys.AUDIO_QUALITY] = quality
+        }
+    }
+
+    suspend fun updateDynamicColors(enabled: Boolean) {
+        dataStore.edit {
+            it[SettingsKeys.DYNAMIC_COLORS] = enabled
+        }
+    }
+
+    suspend fun updateShowLyrics(enabled: Boolean) {
+        dataStore.edit {
+            it[SettingsKeys.SHOW_LYRICS] = enabled
         }
     }
 }
